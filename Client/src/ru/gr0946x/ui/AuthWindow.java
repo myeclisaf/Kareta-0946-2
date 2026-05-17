@@ -114,8 +114,9 @@ public class AuthWindow extends JFrame {
         if (type == MessageType.INFO && (data.contains("LOGIN_OK") || data.contains("REGISTER_OK"))) {
             SwingUtilities.invokeLater(() -> {
                 String nick = loginField.getText().trim();
-                client.sendData("GET_USERS");
-                new ChatWindow(client, nick);
+                ChatWindow chat = new ChatWindow(client, nick);
+                chat.setVisible(true);
+                SwingUtilities.invokeLater(() -> client.sendData("GET_USERS"));
                 dispose();
             });
         } else if (type == MessageType.ERROR) {

@@ -74,6 +74,17 @@ public class ConnectedClient {
                     String query = parts.length > 1 ? parts[1] : "";
                     sendSearchResults(query);
                 }
+                case "GET_USERS" -> {
+                    if (user != null) {
+                        var builder = new StringBuilder(BROADCAST_TARGET);
+                        synchronized (clients) {
+                            clients.stream()
+                                    .filter(c -> c.user != null)
+                                    .forEach(c -> builder.append(",").append(c.user.getNick()));
+                        }
+                        sendData(MessageType.USERS + ":" + builder);
+                    }
+                }
             }
         } catch (Exception e) {
             sendData(MessageType.ERROR + ":" + e.getMessage());
