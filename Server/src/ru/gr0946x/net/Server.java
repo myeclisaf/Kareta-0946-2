@@ -1,33 +1,30 @@
 package ru.gr0946x.net;
 
-import java.io.BufferedReader;
+import Services.MessageService;
+import Services.UserService;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
+import java.net.Socket;
 
 public class Server {
+    private boolean isActive = true;
+    private final UserService userService;
+    private final MessageService messageService;
 
-    private boolean isActive;
-    public Server(int port){
-        isActive = true;
-        new Thread(()->{
+    public Server(int port, UserService userService, MessageService messageService) {
+        this.userService = userService;
+        this.messageService = messageService;
+
+        new Thread(() -> {
             try (var serverSocket = new ServerSocket(port)) {
-                System.out.println("Сервер запущен");
+                System.out.println("Сервер запущен на порту " + port);
                 while (isActive) {
-                    try{
-                        var socket = serverSocket.accept();
-                        System.out.println("Клиент подключен");
-                        var connClient = new ConnectedClient(socket);
-                        connClient.start();
-                    } catch (Exception e) {
-                        System.out.println("Ошибка подключения клиентов...");
-                        System.out.println(e.getMessage());
-                        isActive = false;
-                    }
+                    Socket socket = serverSocket.accept();
+                    ConnectedClient connClient = new ConnectedClient(socket, userService, messageService);
+                    connClient.start();
                 }
             } catch (IOException e) {
-                System.out.println("Ошибка включения сервера");
+                System.err.println("Ошибка сервера: " + e.getMessage());
             }
         }).start();
     }

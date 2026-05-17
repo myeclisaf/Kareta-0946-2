@@ -14,68 +14,65 @@ public class Communicator {
     private final Socket socket;
     private final BufferedReader in;
     private final PrintWriter out;
-    private boolean isActive;
+    private volatile boolean isActive;
 
     private final List<Consumer<String>> dataListeners = new ArrayList<>();
+    private final List<Runnable> disconnectListeners = new ArrayList<>();
 
-    public void addDataListener(Consumer<String> c){
+    public void addDataListener(Consumer<String> c) {
         dataListeners.add(c);
     }
 
-    public void removeDataListener(Consumer<String> c){
+    public void removeDataListener(Consumer<String> c) {
         dataListeners.remove(c);
+    }
+
+    public void addDisconnectListener(Runnable r) {
+        disconnectListeners.add(r);
     }
 
     public Communicator(Socket socket) throws IOException {
         this.socket = socket;
-        in = new BufferedReader(
-            new InputStreamReader(
-                socket.getInputStream(),
-                StandardCharsets.UTF_8
-            ));
-        out = new PrintWriter(
-                socket.getOutputStream(),
-                true,
-                StandardCharsets.UTF_8
-        );
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        out = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
     }
 
-    public void start(){
+    public void start() {
         isActive = true;
-        new Thread(()-> {
+        new Thread(() -> {
             try {
                 while (isActive) {
                     var data = in.readLine();
                     if (data == null) break;
-                    for (var dataListener : dataListeners) {
-                        dataListener.accept(data);
+                    for (var listener : dataListeners) {
+                        listener.accept(data);
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Ошибка чтения данных из сети");
-                System.err.println(e.getMessage());
-            }
-            finally {
+                if (isActive) {
+                    System.err.println("Ошибка чтения: " + e.getMessage());
+                }
+            } finally {
                 stop();
+                for (var r : disconnectListeners) {
+                    r.run();
+                }
             }
         }).start();
     }
 
-    public void sendData(String data){
+    public void sendData(String data) {
         if (isActive && !socket.isClosed())
             out.println(data);
     }
 
-    public void stop(){
+    public synchronized void stop() {
+        if (!isActive) return;
         isActive = false;
         try {
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null && !socket.isClosed())
-                socket.close();
+            if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
-            System.err.println("Ошибка при закрытии ресурсов");
-            System.err.println(e.getMessage());
+            System.err.println("Ошибка закрытия: " + e.getMessage());
         }
     }
 }

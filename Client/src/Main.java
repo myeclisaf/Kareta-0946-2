@@ -1,15 +1,13 @@
 import ru.gr0946x.net.Client;
-import ru.gr0946x.ui.ConsoleUi;
+import ru.gr0946x.ui.AuthWindow;
+import ru.gr0946x.ui.ChatWindow;
 
 void main() {
     try {
-        var c = new Client("localhost", 9460);
-        var ui = new ConsoleUi();
-        ui.addUserDataListener(c::sendData);
-        c.addDataListener(ui::showInfo);
-        c.start();
-        ui.start();
-    } catch (IOException e) {
+        var client = new Client("localhost", 9460);
+        client.start();
+        new AuthWindow(client);
+    } catch (Exception e) {
         System.out.println(e.getMessage());
     }
 }
