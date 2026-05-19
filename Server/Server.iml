@@ -7,12 +7,12 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="Communicator" />
-    <orderEntry type="library" name="springframework.data.spring.jpa" level="project" />
-    <orderEntry type="library" name="hibernate.orm.core" level="project" />
-    <orderEntry type="library" name="slf4j.api" level="project" />
-    <orderEntry type="library" name="jakarta.persistence.api" level="project" />
-    <orderEntry type="library" name="h2database.h2" level="project" />
-    <orderEntry type="library" name="mindrot.jbcrypt" level="project" />
+    <orderEntry type="module" module-name="Communicator" exported="" />
+    <orderEntry type="library" exported="" name="hibernate.orm.core" level="project" />
+    <orderEntry type="library" exported="" name="jakarta.persistence.api" level="project" />
+    <orderEntry type="library" exported="" name="h2database.h2" level="project" />
+    <orderEntry type="library" exported="" name="mindrot.jbcrypt" level="project" />
+    <orderEntry type="library" exported="" name="springframework.data.spring.jpa" level="project" />
+    <orderEntry type="library" name="slf4j.api1" level="project" />
   </component>
 </module>

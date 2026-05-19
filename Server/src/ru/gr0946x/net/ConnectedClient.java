@@ -1,8 +1,8 @@
 package ru.gr0946x.net;
 
-import entities.UserEntity;
-import Services.MessageService;
-import Services.UserService;
+import ru.gr0946x.net.entities.UserEntity;
+import ru.gr0946x.net.services.MessageService;
+import ru.gr0946x.net.services.UserService;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ConnectedClient {
-
 
     private static final String BROADCAST_TARGET = "Все";
 
@@ -55,7 +54,11 @@ public class ConnectedClient {
                 }
                 case "SELECT" -> {
                     selectedUser = parts[1];
-                    if (!BROADCAST_TARGET.equals(selectedUser)) {
+                    if (BROADCAST_TARGET.equals(selectedUser)) {
+                        selectedUser = null;
+                        sendData(MessageType.INFO + ":Переключено в общий чат");
+                        sendGeneralHistory();
+                    } else {
                         sendHistory();
                     }
                 }
@@ -70,92 +73,130 @@ public class ConnectedClient {
                     }
                 }
                 case "SEARCH" -> {
-                    if (user == null || selectedUser == null || BROADCAST_TARGET.equals(selectedUser)) return;
+                    if (user == null) return;
+                    if (selectedUser == null || BROADCAST_TARGET.equals(selectedUser)) {
+                        sendData(MessageType.INFO + ":Для поиска выберите конкретного пользователя из списка");
+                        return;
+                    }
                     String query = parts.length > 1 ? parts[1] : "";
                     sendSearchResults(query);
                 }
                 case "GET_USERS" -> {
                     if (user != null) {
-                        var builder = new StringBuilder(BROADCAST_TARGET);
-                        synchronized (clients) {
-                            clients.stream()
-                                    .filter(c -> c.user != null)
-                                    .forEach(c -> builder.append(",").append(c.user.getNick()));
-                        }
-                        sendData(MessageType.USERS + ":" + builder);
+                        sendUsersToAll();
                     }
                 }
             }
         } catch (Exception e) {
+            System.err.println("❌ Ошибка в parseData: " + e.getMessage());
+            e.printStackTrace();
             sendData(MessageType.ERROR + ":" + e.getMessage());
         }
     }
 
     private void sendBroadcast(String text) {
-        String msg = MessageType.MESSAGE + ":" + user.getNick() + ":" + text;
-        synchronized (clients) {
-            clients.stream()
-                    .filter(c -> c.user != null)
-                    .forEach(c -> c.sendData(msg));
+        try {
+            if (user == null) return;
+            messageService.saveMessage(user, null, text);
+            String msg = MessageType.MESSAGE + ":" + user.getNick() + ":" + text;
+            synchronized (clients) {
+                clients.stream()
+                        .filter(c -> c.user != null)
+                        .forEach(c -> c.sendData(msg));
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка отправки в общий чат: " + e.getMessage());
+            e.printStackTrace();
+            sendData(MessageType.ERROR + ":Не удалось отправить сообщение");
         }
     }
 
     private void sendPrivate(String text) {
-        ConnectedClient target = findClientByNick(selectedUser);
-        if (target == null) {
-            sendData(MessageType.ERROR + ":Пользователь не в сети");
-            return;
+        try {
+            if (user == null) return;
+            ConnectedClient target = findClientByNick(selectedUser);
+            if (target == null) {
+                sendData(MessageType.ERROR + ":Пользователь не в сети");
+                return;
+            }
+            messageService.saveMessage(user, target.user, text);
+            String msg = MessageType.MESSAGE + ":" + user.getNick() + ":" + text;
+            target.sendData(msg);
+            this.sendData(msg);
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка отправки личного сообщения: " + e.getMessage());
+            e.printStackTrace();
+            sendData(MessageType.ERROR + ":Не удалось отправить сообщение");
         }
-        messageService.saveMessage(user, target.user, text);
-        String msg = MessageType.MESSAGE + ":" + user.getNick() + ":" + text;
-        target.sendData(msg);
-        this.sendData(msg);
     }
 
+    // ✅ ИСТОРИЯ ЛИЧНОГО ДИАЛОГА
     private void sendHistory() {
+        if (user == null) return;
         ConnectedClient target = findClientByNick(selectedUser);
-        if (target == null || user == null) return;
-        var history = messageService.getDialog(user, target.user);
+        if (target == null || target.user == null) return;
+
+        var history = messageService.getDialog(user.getId(), target.user.getId());
+
+        for (var m : history) {
+            sendData(MessageType.MESSAGE + ":" + m.getSender().getNick() + ":" + m.getText());
+        }
+    }
+
+    // ✅ ИСТОРИЯ ОБЩЕГО ЧАТА
+    private void sendGeneralHistory() {
+        var history = messageService.getGeneralChatHistory();
+
         for (var m : history) {
             sendData(MessageType.MESSAGE + ":" + m.getSender().getNick() + ":" + m.getText());
         }
     }
 
     private void sendSearchResults(String query) {
-        ConnectedClient target = findClientByNick(selectedUser);
-        if (target == null || user == null) return;
-        var results = messageService.search(user, target.user, query);
-        sendData(MessageType.INFO + ":--- Результаты поиска: \"" + query + "\" ---");
-        if (results.isEmpty()) {
-            sendData(MessageType.INFO + ":Ничего не найдено");
-        } else {
-            for (var m : results) {
-                sendData(MessageType.MESSAGE + ":" + m.getSender().getNick() + ":" + m.getText());
+        try {
+            ConnectedClient target = findClientByNick(selectedUser);
+            if (target == null || user == null) return;
+            var results = messageService.search(user.getId(), target.user.getId(), query);
+            sendData(MessageType.INFO + ":--- Результаты поиска: \"" + query + "\" ---");
+            if (results.isEmpty()) {
+                sendData(MessageType.INFO + ":Ничего не найдено");
+            } else {
+                for (var m : results) {
+                    sendData(MessageType.MESSAGE + ":" + m.getSender().getNick() + ":" + m.getText());
+                }
             }
+            sendData(MessageType.INFO + ":--- Конец поиска ---");
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка поиска: " + e.getMessage());
+            e.printStackTrace();
+            sendData(MessageType.ERROR + ":Ошибка при поиске");
         }
-        sendData(MessageType.INFO + ":--- Конец поиска ---");
     }
 
     private ConnectedClient findClientByNick(String nick) {
         synchronized (clients) {
             return clients.stream()
                     .filter(c -> c.user != null && c.user.getNick().equalsIgnoreCase(nick))
-                    .findFirst().orElse(null);
+                    .findFirst()
+                    .orElse(null);
         }
     }
 
-    private static void sendUsersToAll() {
-        var builder = new StringBuilder(BROADCAST_TARGET);
+    private void sendUsersToAll() {
         synchronized (clients) {
-            clients.stream()
-                    .filter(c -> c.user != null)
-                    .forEach(c -> builder.append(",").append(c.user.getNick()));
+            for (ConnectedClient client : clients) {
+                if (client.user == null) continue;
 
-            String usersData = MessageType.USERS + ":" + builder;
+                var builder = new StringBuilder(BROADCAST_TARGET);
+                for (ConnectedClient c : clients) {
+                    if (c.user != null && !c.user.getNick().equals(client.user.getNick())) {
+                        builder.append(",").append(c.user.getNick());
+                    }
+                }
 
-            clients.stream()
-                    .filter(c -> c.user != null)
-                    .forEach(c -> c.sendData(usersData));
+                String usersData = MessageType.USERS + ":" + builder;
+                client.sendData(usersData);
+            }
         }
     }
 

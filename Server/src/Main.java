@@ -1,7 +1,7 @@
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import Config.DatabaseConfig;
-import Services.MessageService;
-import Services.UserService;
+import ru.gr0946x.net.config.DatabaseConfig;
+import ru.gr0946x.net.services.MessageService;
+import ru.gr0946x.net.services.UserService;
 import ru.gr0946x.net.Server;
 
 public class Main {

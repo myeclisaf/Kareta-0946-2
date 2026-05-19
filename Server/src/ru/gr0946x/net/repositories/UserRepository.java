@@ -1,7 +1,7 @@
-package repositories;
+package ru.gr0946x.net.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import entities.UserEntity;
+import ru.gr0946x.net.entities.UserEntity;
 
 import java.util.Optional;
 

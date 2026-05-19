@@ -1,4 +1,4 @@
-package Config;
+package ru.gr0946x.net.config;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.context.annotation.Bean;
@@ -17,11 +17,12 @@ import java.util.Properties;
 
 @Configuration
 @EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "repositories")
-@ComponentScan(basePackages = {"Services", "repositories"})
+@EnableJpaRepositories(basePackages = "ru.gr0946x.net.repositories")
+@ComponentScan(basePackages = {"ru.gr0946x.net.services", "ru.gr0946x.net.config"})
 public class DatabaseConfig {
 
-    private static final String URL = "jdbc:h2:./kareta_db";
+    // In-memory база — данные стираются при закрытии
+    private static final String URL = "jdbc:h2:mem:kareta_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
     private static final String DRIVER = "org.h2.Driver";
     private static final String USER = "sa";
     private static final String PASS = "";
@@ -37,13 +38,16 @@ public class DatabaseConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
         var em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
-        em.setPackagesToScan("entities");
+        // 🔥 Сканируем ВСЕ пакеты с сущностями
+        em.setPackagesToScan("ru.gr0946x.net.entities");
         em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 
         var props = new Properties();
-        props.put("hibernate.hbm2ddl.auto", "update");
-        props.put("hibernate.show_sql", "true");
-        props.put("hibernate.format_sql", "true");
+        // 🔥 ВАЖНО: create-drop создаёт таблицы при старте и удаляет при закрытии
+        props.put("hibernate.hbm2ddl.auto", "create-drop");
+        props.put("hibernate.show_sql", "true");  // Показывать SQL в консоли
+        props.put("hibernate.format_sql", "true"); // Красивый вывод SQL
+        props.put("hibernate.dialect", "org.hibernate.dialect.H2Dialect");
 
         em.setJpaProperties(props);
         return em;

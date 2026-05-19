@@ -1,10 +1,10 @@
-package Services;
+package ru.gr0946x.net.services;
 
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import entities.UserEntity;
-import repositories.UserRepository;
+import ru.gr0946x.net.entities.UserEntity;
+import ru.gr0946x.net.repositories.UserRepository;
 
 @Service
 public class UserService {

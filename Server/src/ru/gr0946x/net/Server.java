@@ -1,7 +1,7 @@
 package ru.gr0946x.net;
 
-import Services.MessageService;
-import Services.UserService;
+import ru.gr0946x.net.services.MessageService;
+import ru.gr0946x.net.services.UserService;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;

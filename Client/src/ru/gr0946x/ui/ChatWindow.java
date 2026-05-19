@@ -211,15 +211,17 @@ public class ChatWindow extends JFrame {
 
         sendButton.addActionListener(e -> sendMessage());
         messageField.addActionListener(e -> sendMessage());
+
         usersList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 var selected = usersList.getSelectedValue();
                 if (selected != null) {
-                    client.sendData("SELECT:" + selected);
                     chatArea.setText("");
+                    client.sendData("SELECT:" + selected);
                 }
             }
         });
+
         searchButton.addActionListener(e -> sendSearch());
         searchField.addActionListener(e -> sendSearch());
     }
@@ -234,6 +236,12 @@ public class ChatWindow extends JFrame {
     private void sendSearch() {
         String query = searchField.getText().trim();
         if (query.isBlank()) return;
+        String selected = usersList.getSelectedValue();
+        if (selected == null || "Все".equals(selected)) {
+            chatArea.append("[Система] Для поиска выберите конкретного пользователя из списка\n");
+            chatArea.setCaretPosition(chatArea.getDocument().getLength());
+            return;
+        }
         client.sendData("SEARCH:" + query);
     }
 
@@ -246,7 +254,7 @@ public class ChatWindow extends JFrame {
                 usersModel.clear();
                 usersModel.addElement("Все");
                 for (String u : users) {
-                    if (!u.isBlank() && !u.equals(username)) {
+                    if (!u.isBlank() && !u.equals(username) && !u.equals("Все")) {
                         usersModel.addElement(u);
                     }
                 }
@@ -261,7 +269,11 @@ public class ChatWindow extends JFrame {
                     chatArea.append(msg.length == 2 ? msg[0] + ": " + msg[1] + "\n" : data + "\n");
                 }
                 case INFO -> {
-                    chatArea.append("[Система] " + data + "\n");
+                    if (data.startsWith("---")) {
+                        chatArea.append("\n" + data + "\n");
+                    } else {
+                        chatArea.append("[Система] " + data + "\n");
+                    }
                     userDataListeners.forEach(listener -> listener.accept(data));
                 }
                 case ERROR -> JOptionPane.showMessageDialog(this, data, "Ошибка", JOptionPane.ERROR_MESSAGE);
